@@ -1,0 +1,56 @@
+name: Deploy to cPanel
+
+# Uploads the site to cPanel over FTPS every time main is updated.
+# Add these repository secrets (Settings -> Secrets and variables -> Actions):
+#   FTP_SERVER      e.g. ftp.yourdomain.com
+#   FTP_USERNAME    your cPanel FTP account, e.g. you@yourdomain.com
+#   FTP_PASSWORD    that FTP account's password
+#   FTP_SERVER_DIR  target folder, e.g. /public_html/
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: cpanel-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Upload to cPanel
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftps
+          port: 21
+          local-dir: ./
+          server-dir: ${{ secrets.FTP_SERVER_DIR }}
+          dangerous-clean-slate: false
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/.github/**
+            **/.vscode/**
+            **/node_modules/**
+            **/archive/**
+            **/deploy/**
+            **/*.zip
+            **/*.sql
+            **/*.cmd
+            **/*.log
+            .gitignore
+            .ftp-deploy-sync-state.json
+            DEPLOY.md
+            config.example.php
+            config.php
+            server.js
+            package.json
+            package-lock.json
