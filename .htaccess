@@ -1,0 +1,37 @@
+# Opunga Cyber and Electronics - production hardening
+# Valid for Apache 2.4 (the setup on most cPanel shared hosting).
+
+Options -Indexes
+
+# Never let a browser download a config or source file directly.
+# The php/ request handlers are NOT blocked here, they must stay
+# reachable because every form posts to them.
+<FilesMatch "^(db|auth)\.php$">
+    Require all denied
+</FilesMatch>
+
+# Block dotfiles, database dumps, logs, and editor leftovers
+<FilesMatch "^\.|\.(bak|old|orig|swp|dist|sql|log|ini|env|json|md)$">
+    Require all denied
+</FilesMatch>
+
+# The archive folder holds the retired duplicate pages. Keep it private.
+RedirectMatch 404 archive/
+
+<IfModule mod_headers.c>
+    Header unset X-Powered-By
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    Header always set Permissions-Policy "geolocation=(), microphone=(), camera=()"
+</IfModule>
+
+# Force HTTPS once a certificate is active in cPanel.
+# Leave this commented until your domain has a working SSL certificate,
+# otherwise visitors are redirected to a URL that will not serve.
+#
+# <IfModule mod_rewrite.c>
+#     RewriteEngine On
+#     RewriteCond %{HTTPS} !=on
+#     RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+# </IfModule>

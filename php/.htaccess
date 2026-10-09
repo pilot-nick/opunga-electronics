@@ -1,0 +1,12 @@
+Options -Indexes
+
+# db.php and auth.php are only ever included by the pages.
+# They must never be requested directly from a browser.
+<FilesMatch "^(db|auth)\.php$">
+    Require all denied
+</FilesMatch>
+
+# Block dotfiles and leftover editor or backup files
+<FilesMatch "^\.|^(php_htaccess\.bak)$|\.(bak|old|orig|swp|dist|sql|log|ini|env|json|md)$">
+    Require all denied
+</FilesMatch>

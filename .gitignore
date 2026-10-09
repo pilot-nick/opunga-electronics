@@ -1,0 +1,23 @@
+# Local configuration / secrets
+config.php
+.env
+*.env.local
+
+# Deployment bundles and archives
+*.zip
+archive/
+
+# Node
+node_modules/
+npm-debug.log*
+
+# Editor / OS
+.vscode/
+.idea/
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Tunnel / runtime logs
+*.log
+opunga-host/

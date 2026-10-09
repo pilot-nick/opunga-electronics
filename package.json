@@ -1,0 +1,14 @@
+{
+  "name": "opunga-electronics",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Opunga Cyber and Electronics - PHP storefront served locally for development",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "lint": "php-cgi -l -d error_reporting=E_ALL index.php"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
