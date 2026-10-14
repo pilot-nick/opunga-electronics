@@ -1,8 +1,8 @@
 Options -Indexes
 
-# db.php and auth.php are only ever included by the pages.
+# db.php, auth.php and mpesa.php are only ever included by the pages.
 # They must never be requested directly from a browser.
-<FilesMatch "^(db|auth)\.php$">
+<FilesMatch "^(db|auth|config\.local|mpesa)\.php$">
     Require all denied
 </FilesMatch>
 

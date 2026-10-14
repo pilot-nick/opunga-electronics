@@ -131,16 +131,45 @@ Delete them before going live, they are only there for testing.
 
 ## 7. M-PESA
 
-The checkout asks the customer to type the confirmation code from their M-PESA SMS. The site
-does **not** talk to Safaricom, so an order is saved with status `Pending` and only moves to
-`Paid` when you confirm it in **Admin → Orders**.
+The checkout asks the customer for their M-PESA phone number and sends an STK push prompt to
+their phone, so they pay with a PIN. The site never asks for an M-PESA code. The order starts
+as `Pending` and becomes `Paid` automatically once Safaricom confirms the money (callback or
+status query).
 
-Until you connect Daraja, treat `Pending` as unpaid. Do not ship on a `Pending` order.
+If the Daraja keys below are left empty, checkout tells customers that online M-PESA is
+unavailable, so no orders can be placed until you fill them in.
 
-To go live with automatic confirmation you need the Safaricom Daraja API: a Till number, a
-consumer key and secret, and a callback URL that Safaricom can reach over HTTPS. That
-callback has to be added to `php/` as a new handler and to the `FilesMatch` deny list in
-`.htaccess` so it is not blocked.
+**To turn on automatic STK push confirmation**
+
+1. Register for the Safaricom **Daraja** API and create an app to get a **consumer key** and
+   **consumer secret**. For sandbox tests that is all you need: the test shortcode `174379`
+   and the published sandbox passkey are filled in automatically. For live payments also set
+   `OPUNGA_MPESA_ENV` to `live`, your own till in `OPUNGA_MPESA_TILL`, and the **passkey**
+   Safaricom issued for that till number (Daraja app → "Lipa na M-PESA Online Shortcode").
+2. Add the values to `config.php` (optionally via `php/config.local.php` on hosts like
+   InfinityFree that cannot store files above the web root):
+
+```php
+define('OPUNGA_MPESA_ENV', 'sandbox');          // 'sandbox' to test, 'live' for real money
+define('OPUNGA_MPESA_CONSUMER_KEY', '');        // paste your Daraja consumer key
+define('OPUNGA_MPESA_CONSUMER_SECRET', '');     // paste your Daraja consumer secret
+define('OPUNGA_MPESA_PASSKEY', '');             // blank in sandbox; required for live
+define('OPUNGA_MPESA_TILL', '');                // blank uses 174379 sandbox / 3461337 live
+define('OPUNGA_MPESA_CALLBACK_URL', '');
+```
+
+3. If `OPUNGA_MPESA_CALLBACK_URL` is left empty the shop uses the current site address
+   automatically (`.../php/mpesa_callback.php`). Set it explicitly if you need a fixed HTTPS
+   URL. Add the callback URL to the till in the Safaricom portal for live payments.
+4. On hosts whose firewall or proxy blocks inbound Safaricom callbacks (InfinityFree's
+   browser-security system is one example) the checkout's status poll still works, because it
+   asks Daraja for the payment state instead of waiting for the callback. No change needed.
+
+Flow: customer enters their phone at checkout → STK push prompt appears on their phone →
+they enter their M-PESA PIN → the payment resolves via callback or the status poll → order
+status `Paid`, cart items for that order are removed, receipt shown. If the prompt is declined
+or expires, the order is cancelled, stock is restored, nothing is charged, and the customer is
+sent back to their cart to edit it and try again.
 
 ## 8. Final checks after upload
 

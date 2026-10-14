@@ -47,6 +47,8 @@ $configCandidates = array(
     dirname(__DIR__) . '/config.php'
 );
 
+$configLoaded = false;
+
 foreach($configCandidates as $configFile){
 
     $realConfig = realpath($configFile);
@@ -68,7 +70,30 @@ foreach($configCandidates as $configFile){
     if(defined('OPUNGA_DB_USER')){ $db_user = OPUNGA_DB_USER; }
     if(defined('OPUNGA_DB_PASS')){ $db_pass = OPUNGA_DB_PASS; }
 
+    $configLoaded = true;
+
     break;
+
+}
+
+// Some free hosts (for example InfinityFree) cannot store files outside the
+// web root, so also accept one local config inside php/. It only calls
+// define(), so a direct request prints nothing, and php/.htaccess returns
+// 403 for the file anyway, keeping the password away from browsers.
+if(!$configLoaded){
+
+    $localConfig = __DIR__ . '/config.local.php';
+
+    if(is_file($localConfig)){
+
+        require_once $localConfig;
+
+        if(defined('OPUNGA_DB_HOST')){ $db_host = OPUNGA_DB_HOST; }
+        if(defined('OPUNGA_DB_NAME')){ $db_name = OPUNGA_DB_NAME; }
+        if(defined('OPUNGA_DB_USER')){ $db_user = OPUNGA_DB_USER; }
+        if(defined('OPUNGA_DB_PASS')){ $db_pass = OPUNGA_DB_PASS; }
+
+    }
 
 }
 

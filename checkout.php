@@ -7,7 +7,16 @@ require_login();
 
 require_customer();
 
-$user_id = $_SESSION['user_id'];
+$user_id = (int)$_SESSION['user_id'];
+
+$phoneStmt = mysqli_prepare($conn, "SELECT phone FROM users WHERE id = ?");
+
+mysqli_stmt_bind_param($phoneStmt, "i", $user_id);
+mysqli_stmt_execute($phoneStmt);
+
+$userPhone = mysqli_stmt_get_result($phoneStmt)->fetch_assoc()['phone'] ?? "";
+
+mysqli_stmt_close($phoneStmt);
 
 $sql="SELECT
 products.id,
@@ -209,21 +218,22 @@ aria-pressed="false">
 
 <div class="field">
 
-<label for="mpesa_code">Enter M-PESA Transaction Code</label>
+<label for="mpesa_phone">M-PESA Phone Number</label>
 
 <input
-id="mpesa_code"
-type="text"
-name="mpesa_code"
-placeholder="e.g. QGH7X2K4LM"
-pattern="[A-Za-z0-9]{6,}"
+id="mpesa_phone"
+type="tel"
+name="mpesa_phone"
+value="<?php echo htmlspecialchars($userPhone, ENT_QUOTES, 'UTF-8'); ?>"
+placeholder="07XXXXXXXX"
+pattern="^(0?[17][0-9]{8}|254[17][0-9]{8})$"
 required>
 
-<p class="hint">Found the code in your M-PESA confirmation SMS.</p>
+<p class="hint">We will send an M-PESA payment prompt to this number. Enter your M-PESA PIN on your phone to pay KSh <?php echo number_format($total); ?>.</p>
 
 </div>
 
-<button type="submit" class="btn btn--success btn--block">Complete Order</button>
+<button type="submit" class="btn btn--success btn--block">Pay Now with M-PESA</button>
 
 </form>
 

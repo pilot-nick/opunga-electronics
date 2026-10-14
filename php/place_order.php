@@ -2,6 +2,7 @@
 
 include "auth.php";
 include "db.php";
+include "mpesa.php";
 
 require_login();
 
@@ -15,15 +16,46 @@ if($_SERVER["REQUEST_METHOD"] != "POST"){
 
 csrf_check();
 
-$mpesa = strtoupper(post_trimmed('mpesa_code'));
+// Checkout always asks for the customer's M-PESA phone number, then sends an
+// STK push prompt. The site never asks the customer to type an M-PESA code.
+$phone254 = mpesa_normalize_phone(post_trimmed('mpesa_phone'));
 
-if(!preg_match('/^[A-Z0-9]{6,12}$/', $mpesa)){
+if($phone254 === ""){
     echo "<script>
-    alert('Enter the transaction code exactly as it appears in your M-PESA SMS.');
+    alert('Enter a valid M-PESA phone number, for example 0712345678.');
     window.location='../checkout.php';
     </script>";
 
     exit();
+}
+
+// Without the Daraja credentials no prompt can be sent, so say so instead of
+// quietly creating an order that can never be paid.
+if(!mpesa_enabled()){
+    echo "<script>
+    alert('Online M-PESA payment is not available right now. Please try again later.');
+    window.location='../cart.php';
+    </script>";
+
+    exit();
+}
+
+// A customer with an unpaid order finishes paying it instead of stacking
+// up more pending orders, which ties up stock more than once.
+$existing = mysqli_prepare($conn,
+    "SELECT id FROM orders
+     WHERE user_id = ? AND status IN ('Pending', 'Processing')
+     LIMIT 1");
+
+mysqli_stmt_bind_param($existing, "i", $user_id);
+mysqli_stmt_execute($existing);
+
+$openOrder = mysqli_stmt_get_result($existing)->fetch_assoc();
+
+mysqli_stmt_close($existing);
+
+if($openOrder){
+    safe_redirect("../payment.php?order=" . (int)$openOrder['id']);
 }
 
 // Everything from here on runs inside one transaction, so the cart read,
@@ -172,27 +204,24 @@ foreach($items as $item){
 
 $amount = number_format($total, 2, '.', '');
 
+// The column is updated with the Daraja CheckoutRequestID once the prompt
+// has been accepted by Safaricom.
+$payCode = "";
+
 $pay = mysqli_prepare($conn,
     "INSERT INTO payments(order_id, amount, mpesa_code)
      VALUES(?, ?, ?)");
 
-mysqli_stmt_bind_param($pay, "iss", $order_id, $amount, $mpesa);
+mysqli_stmt_bind_param($pay, "iss", $order_id, $amount, $payCode);
 mysqli_stmt_execute($pay);
 
 mysqli_stmt_close($pay);
-
-$clear = mysqli_prepare($conn, "DELETE FROM cart WHERE user_id = ?");
-
-mysqli_stmt_bind_param($clear, "i", $user_id);
-mysqli_stmt_execute($clear);
-
-mysqli_stmt_close($clear);
 
 if(mysqli_errno($conn) != 0){
     mysqli_rollback($conn);
 
     echo "<script>
-    alert('We could not record your payment reference. Nothing was charged. Please try again.');
+    alert('We could not record your payment. Nothing was charged. Please try again.');
     window.location='../cart.php';
     </script>";
 
@@ -201,6 +230,44 @@ if(mysqli_errno($conn) != 0){
 
 mysqli_commit($conn);
 
-safe_redirect("../receipt.php?order=" . $order_id);
+// The cart is deliberately left alone here: it is only emptied once the
+// payment is actually confirmed, so a failed or cancelled prompt loses no
+// items and the customer can simply edit the cart and try again.
+$push = mpesa_stk_push($phone254, $total, 'OPN' . $order_id, 'Opunga shop order');
+
+if(!$push['ok']){
+
+    mpesa_abandon_order($conn, $order_id);
+
+    echo "<script>
+    alert(" . json_encode($push['error'] . " You can review your cart and try again.") . ");
+    window.location='../cart.php';
+    </script>";
+
+    exit();
+}
+
+$saveCode = mysqli_prepare($conn,
+    "UPDATE payments SET mpesa_code = ? WHERE order_id = ?");
+
+mysqli_stmt_bind_param($saveCode, "si", $push['checkout'], $order_id);
+mysqli_stmt_execute($saveCode);
+
+$saved = mysqli_stmt_affected_rows($saveCode);
+
+mysqli_stmt_close($saveCode);
+
+if($saved != 1){
+    mpesa_abandon_order($conn, $order_id);
+
+    echo "<script>
+    alert('We could not keep track of your payment. Nothing was charged, and your cart is safe.');
+    window.location='../cart.php';
+    </script>";
+
+    exit();
+}
+
+safe_redirect("../payment.php?order=" . $order_id);
 
 ?>

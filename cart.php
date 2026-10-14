@@ -10,9 +10,11 @@ require_customer();
 $user = $_SESSION['user_id'];
 
 $sql = "SELECT
+products.id,
 products.name,
 products.price,
 products.image,
+products.stock,
 cart.quantity
 
 FROM cart
@@ -35,9 +37,11 @@ $amount = $row['price'] * $row['quantity'];
 $total += $amount;
 
 $rows[] = array(
+'id' => $row['id'],
 'name' => $row['name'],
 'image' => $row['image'],
 'price' => $row['price'],
+'stock' => $row['stock'],
 'quantity' => $row['quantity'],
 'amount' => $amount
 );
@@ -152,6 +156,7 @@ aria-pressed="false">
 <th>Price</th>
 <th>Quantity</th>
 <th>Total</th>
+<th>Actions</th>
 
 </tr>
 
@@ -175,6 +180,35 @@ alt="<?php echo htmlspecialchars($row['name']); ?>"></td>
 <td><?php echo $row['quantity']; ?></td>
 
 <td class="mono">KSh <?php echo number_format($row['amount']); ?></td>
+
+<td>
+
+<form method="POST" action="php/update_cart.php" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+
+<?php echo csrf_field(); ?>
+
+<input type="hidden" name="product_id" value="<?php echo (int)$row['id']; ?>">
+
+<input
+type="number"
+name="quantity"
+value="<?php echo (int)$row['quantity']; ?>"
+min="1"
+max="<?php echo (int)$row['stock']; ?>"
+aria-label="Quantity for <?php echo htmlspecialchars($row['name'], ENT_QUOTES, 'UTF-8'); ?>"
+style="width:70px;">
+
+<button type="submit" class="btn btn--sm">Update</button>
+
+<button
+type="submit"
+class="btn btn--sm btn--danger"
+formaction="php/remove_from_cart.php"
+formnovalidate>Remove</button>
+
+</form>
+
+</td>
 
 </tr>
 
