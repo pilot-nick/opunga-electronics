@@ -1,6 +1,64 @@
-# Deploying Opunga Cyber and Electronics to cPanel
+# Deploying Opunga Cyber and Electronics
 
-This guide is for standard cPanel shared hosting running Apache 2.4 and PHP 7.4 or 8.x.
+This guide covers both the free InfinityFree host and standard cPanel shared hosting. Pick one.
+
+- [Quick start on InfinityFree (free)](#quick-start-on-infinityfree-free)
+- [cPanel deployment](#cpanel-deployment)
+
+## Quick start on InfinityFree (free)
+
+InfinityFree gives free PHP 8.4 and MySQL hosting with a free subdomain, so it is the fastest way
+to get this shop online at no cost. You must create the account yourself (email signup); after
+that the deployment runs automatically from GitHub on every push to `main`.
+
+### 1. Create the account and hosting space
+
+1. Sign up at https://dash.infinityfree.com/register and verify your email.
+2. In the Client Area click **Create Account**, choose a free subdomain such as `opunga.rf.gd`
+   (also offered: `.great-site.net`, `.infinityfreeapp.com`), and set a password. Your live URL
+   will be `https://opunga.rf.gd/`.
+3. Open the account's **FTP details**. Note the FTP username (`if0_xxxxxxx`) and password. The
+   FTP host is always `ftpupload.net` on port `21`.
+
+### 2. Create the database
+
+1. In the account, open **MySQL Databases** and create a database.
+2. Note the four values: host `sqlXXX.infinityfree.com`, name `if0_xxxxxxx_opunga`, user
+   `if0_xxxxxxx`, and the password you set. InfinityFree uses port 3306, so do not add a port.
+3. Click **phpMyAdmin**, select the database, open **Import**, choose `opunga_shop.sql`, and Go.
+
+### 3. Point GitHub at the host
+
+Add these repository secrets (Settings -> Secrets and variables -> Actions):
+
+| Secret | Value |
+| ------ | ----- |
+| `FTP_SERVER` | `ftpupload.net` |
+| `FTP_USERNAME` | `if0_xxxxxxx` |
+| `FTP_PASSWORD` | your FTP password |
+| `FTP_SERVER_DIR` | `/htdocs/` |
+| `FTP_PROTOCOL` | `ftp` |
+| `FTP_PORT` | `21` |
+
+Then push to `main`. The workflow uploads the site into `htdocs/` over FTP, so it goes live.
+
+### 4. Database configuration
+
+InfinityFree cannot store files above the web root, so use `php/config.local.php` instead of the
+`config.php` from the cPanel steps below. Copy `deploy/config.local.php`, fill in the four MySQL
+values and the M-PESA keys, and upload it to `htdocs/php/config.local.php` with the host's File
+Manager or an FTP client. `php/.htaccess` returns 403 for the file, so the password is never
+served to browsers.
+
+### 5. M-PESA note
+
+InfinityFree's browser-security system can block inbound Safaricom callbacks. That is fine: the
+checkout status poll asks Daraja directly for the payment state, so orders still turn `Paid`. No
+code change is needed.
+
+## cPanel deployment
+
+The rest of this guide is for standard cPanel shared hosting running Apache 2.4 and PHP 7.4 or 8.x.
 
 ## 1. Create the database in cPanel
 
